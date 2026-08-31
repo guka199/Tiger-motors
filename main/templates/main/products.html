@@ -1,0 +1,218 @@
+{% extends 'main/base.html' %}
+{% block title %}Products - My E-Commerce Site{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+
+    <!-- SIDEBAR -->
+    <div class="col-md-3">
+
+        <!-- CAR BRANDS -->
+        <h5 class="mb-3">Car Brands</h5>
+        <ul class="list-group mb-4">
+            <a href="{% url 'products' %}"
+               class="list-group-item {% if not selected_brand %}active{% endif %}">
+                All Brands
+            </a>
+            {% for brand in car_brands %}
+                <a href="{% url 'products' %}?brand={{ brand.id }}{% if selected_part_type %}&type={{ selected_part_type }}{% endif %}{% if availability %}&available={{ availability }}{% endif %}{% if order %}&order={{ order }}{% endif %}"
+                   class="list-group-item {% if selected_brand == brand.id|stringformat:'s' %}active{% endif %}">
+                    {{ brand.name }}
+                </a>
+            {% endfor %}
+        </ul>
+
+        <!-- PART TYPES -->
+        <h5 class="mb-3">Part Types</h5>
+        <ul class="list-group mb-4">
+            <a href="{% url 'products' %}{% if selected_brand %}?brand={{ selected_brand }}{% endif %}"
+               class="list-group-item {% if not selected_part_type %}active{% endif %}">
+                All Parts
+            </a>
+            {% for type in part_types %}
+                <a href="{% url 'products' %}?type={{ type.id }}{% if selected_brand %}&brand={{ selected_brand }}{% endif %}{% if availability %}&available={{ availability }}{% endif %}{% if order %}&order={{ order }}{% endif %}"
+                   class="list-group-item {% if selected_part_type == type.id|stringformat:'s' %}active{% endif %}">
+                    {{ type.name }}
+                </a>
+            {% endfor %}
+        </ul>
+
+        <!-- AVAILABILITY FILTER -->
+        <form method="get" class="mt-3" action="{% url 'products' %}">
+            {% if selected_brand %}
+                <input type="hidden" name="brand" value="{{ selected_brand }}">
+            {% endif %}
+            {% if selected_part_type %}
+                <input type="hidden" name="type" value="{{ selected_part_type }}">
+            {% endif %}
+            {% if order %}
+                <input type="hidden" name="order" value="{{ order }}">
+            {% endif %}
+
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="available" value="1"
+                       id="availableCheck" {% if availability %}checked{% endif %}>
+                <label class="form-check-label" for="availableCheck">
+                    Only show available
+                </label>
+            </div>
+
+            <button type="submit" class="btn btn-sm btn-primary mt-2">Apply</button>
+        </form>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="col-md-9">
+
+        <!-- SEARCH & ORDERING -->
+        <form method="get" class="mb-4 d-flex justify-content-between" action="{% url 'products' %}">
+            <div class="input-group me-2">
+                <input
+                    type="text"
+                    class="form-control"
+                    placeholder="Search products..."
+                    name="q"
+                    value="{{ search_query }}"
+                >
+                {% if selected_brand %}
+                    <input type="hidden" name="brand" value="{{ selected_brand }}">
+                {% endif %}
+                {% if selected_part_type %}
+                    <input type="hidden" name="type" value="{{ selected_part_type }}">
+                {% endif %}
+                {% if availability %}
+                    <input type="hidden" name="available" value="{{ availability }}">
+                {% endif %}
+            </div>
+
+            <div class="input-group ms-2">
+                <select name="order" class="form-select" onchange="this.form.submit()">
+                    <option value="">Sort by</option>
+                    <option value="price_asc" {% if order == 'price_asc' %}selected{% endif %}>
+                        Price: Low → High
+                    </option>
+                    <option value="price_desc" {% if order == 'price_desc' %}selected{% endif %}>
+                        Price: High → Low
+                    </option>
+                </select>
+            </div>
+        </form>
+
+        <!-- PRODUCTS GRID -->
+        <h2 class="mb-4">Exact Matches</h2>
+        {% if products %}
+            <div class="row row-cols-1 row-cols-md-3 g-4">
+                {% for product in products %}
+                    <div class="col">
+                        <a href="{% url 'product_detail' product.product_id %}" class="text-decoration-none text-dark">
+                            <div class="card h-100 shadow-sm">
+                                {% if product.images.first %}
+                                    <img src="{{ product.images.first.image.url }}"
+                                         class="card-img-top"
+                                         alt="{{ product.name_ge }}">
+                                {% else %}
+                                    <img src="https://via.placeholder.com/300x200?text=No+Image"
+                                         class="card-img-top"
+                                         alt="No Image">
+                                {% endif %}
+                                <div class="card-body d-flex flex-column">
+                                    <h6 class="card-title fw-bold">{{ product.name_ge }}</h6>
+                                    <p class="card-text text-muted small">
+                                        {{ product.description|truncatechars:90 }}
+                                    </p>
+                                    <div class="mt-auto d-flex justify-content-between align-items-center">
+                                        <span class="fw-bold text-primary">${{ product.price }}</span>
+                                        <a href="{% url 'product_detail' product.product_id %}" class="btn btn-sm btn-outline-primary">
+                                            View
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <!-- PAGINATION -->
+            <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center mt-4">
+
+            {% if products.has_previous %}
+            <li class="page-item">
+            <a class="page-link"
+            href="?page={{ products.previous_page_number }}&q={{ search_query }}&brand={{ selected_brand }}&type={{ selected_part_type }}&available={{ availability }}&order={{ order }}">
+            &laquo;
+            </a>
+            </li>
+            {% endif %}
+
+            {% for num in products.paginator.page_range %}
+            {% if num >= products.number|add:-2 and num <= products.number|add:2 %}
+            <li class="page-item {% if products.number == num %}active{% endif %}">
+            <a class="page-link"
+            href="?page={{ num }}&q={{ search_query }}&brand={{ selected_brand }}&type={{ selected_part_type }}&available={{ availability }}&order={{ order }}">
+            {{ num }}
+            </a>
+            </li>
+            {% endif %}
+            {% endfor %}
+
+            {% if products.has_next %}
+            <li class="page-item">
+            <a class="page-link"
+            href="?page={{ products.next_page_number }}&q={{ search_query }}&brand={{ selected_brand }}&type={{ selected_part_type }}&available={{ availability }}&order={{ order }}">
+            &raquo;
+            </a>
+            </li>
+            {% endif %}
+
+            </ul>
+            </nav>
+        {% else %}
+            <p class="text-muted">No exact matches found.</p>
+        {% endif %}
+
+        <!-- SUGGESTED / UNIVERSAL PARTS SECTION -->
+        <hr class="my-5">
+        {% if show_universal %}
+            <a href="?q={{ search_query }}&brand={{ selected_brand }}&type={{ selected_part_type }}&available={{ availability }}&order={{ order }}">
+                ▼ Hide Universal Parts
+            </a>
+            <h3 class="mt-2">Possible Universal Parts</h3>
+            <p class="text-muted small">
+                These parts are not assigned to a specific brand or type.
+            </p>
+            <div class="row row-cols-1 row-cols-md-3 g-4">
+                {% for product in suggested_products %}
+                    <div class="col">
+                        <a href="{% url 'product_detail' product.product_id %}" class="text-decoration-none text-dark">
+                            <div class="card h-100 shadow-sm">
+                                {% if product.images.first %}
+                                    <img src="{{ product.images.first.image.url }}"
+                                        class="card-img-top"
+                                        alt="{{ product.name_ge }}">
+                                {% else %}
+                                    <img src="https://via.placeholder.com/300x200?text=No+Image"
+                                        class="card-img-top"
+                                        alt="No Image">
+                                {% endif %}
+                                <div class="card-body d-flex flex-column">
+                                    <h6 class="card-title fw-bold">{{ product.name_ge }}</h6>
+                                    <p class="fw-bold text-primary mt-auto">${{ product.price }}</p>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                {% empty %}
+                    <p class="text-muted">No universal parts available.</p>
+                {% endfor %}
+            </div>
+        {% else %}
+            <a href="?q={{ search_query }}&brand={{ selected_brand }}&type={{ selected_part_type }}&available={{ availability }}&order={{ order }}&show_universal=1">
+                ▶ Show Universal Parts
+            </a>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}

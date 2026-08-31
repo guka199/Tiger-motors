@@ -1,0 +1,27 @@
+# .gitignore
+
+# Ignore SQLite database
+*.sqlite3
+*.db3
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Django media files
+media/
+
+# Environment variables
+.env
+
+# Virtual environment
+v/
+
+# OS files
+.DS_Store
+
+# Data dumps (contain password hashes / session tokens)
+data_backup.json
+
+# Large data import files
+main/management/commands/products.xlsx

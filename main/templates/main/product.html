@@ -1,0 +1,31 @@
+{% extends 'main/base.html' %}
+
+{% block title %}{{ product.name_ge }} - My E-Commerce Site{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6">
+        {% if product.images.all %}
+            {% for img in product.images.all %}
+                <img src="{{ img.image.url }}" class="img-fluid mb-2" alt="{{ product.name }}">
+            {% endfor %}
+        {% else %}
+            <img src="https://via.placeholder.com/500x400?text=No+Image" class="img-fluid" alt="No Image">
+        {% endif %}
+    </div>
+    <div class="col-md-6">
+        <h2>{{ product.name_ge }}</h2>
+        <p class="text-muted">{{ product.description }} {{product.product_id }}</p>
+        <h4 class="text-primary">${{ product.price }}</h4>
+        <p>
+            Availability: 
+            {% if product.available %}
+                <span class="text-success">In Stock</span>
+            {% else %}
+                <span class="text-danger">Out of Stock</span>
+            {% endif %}
+        </p>
+        <a href="#" class="btn btn-primary">Add to Cart</a>
+    </div>
+</div>
+{% endblock %}

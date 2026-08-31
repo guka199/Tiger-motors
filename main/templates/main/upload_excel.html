@@ -1,0 +1,12 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<h1>Upload Products Excel</h1>
+
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="file" name="excel_file" accept=".xlsx" required>
+    <button type="submit" class="default">Upload</button>
+</form>
+
+{% endblock %}
