@@ -88,12 +88,20 @@ WSGI_APPLICATION = 'ecom.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    'default': dj_database_url.config(
-        default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
-        conn_max_age=600,
-    )
-}
+# The Neon integration (installed via the Vercel Marketplace) provisions its
+# connection string under a prefixed name instead of plain DATABASE_URL, to
+# avoid colliding with other database integrations on the same project.
+_database_url = os.environ.get('DATABASE_URL') or os.environ.get('DATABASE2_DATABASE_URL')
+
+if _database_url:
+    DATABASES = {'default': dj_database_url.parse(_database_url, conn_max_age=600)}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # Password validation
