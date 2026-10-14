@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'main',
     'import_export',
+    'storages',
 ]
 
 MIDDLEWARE = [
@@ -132,8 +133,48 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Media storage (Cloudflare R2, S3-compatible)
+# Vercel's filesystem is ephemeral, so uploaded product images can't live on
+# local disk in production. Falls back to local disk when R2 env vars aren't
+# set (e.g. local dev without R2 credentials configured).
+AWS_ACCESS_KEY_ID = os.environ.get('R2_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.environ.get('R2_SECRET_ACCESS_KEY')
+AWS_STORAGE_BUCKET_NAME = os.environ.get('R2_BUCKET_NAME')
+AWS_S3_ENDPOINT_URL = os.environ.get('R2_ENDPOINT_URL')
+AWS_S3_CUSTOM_DOMAIN = os.environ.get('R2_PUBLIC_DOMAIN')
+AWS_S3_REGION_NAME = 'auto'
+AWS_S3_ADDRESSING_STYLE = 'virtual'
+AWS_DEFAULT_ACL = None
+AWS_QUERYSTRING_AUTH = False
+AWS_S3_FILE_OVERWRITE = False
+
+# boto3 >=1.36 defaults to sending request/response checksums that R2
+# doesn't support, which breaks uploads unless disabled.
+os.environ.setdefault('AWS_REQUEST_CHECKSUM_CALCULATION', 'WHEN_REQUIRED')
+os.environ.setdefault('AWS_RESPONSE_CHECKSUM_VALIDATION', 'WHEN_REQUIRED')
+
+if AWS_ACCESS_KEY_ID and AWS_STORAGE_BUCKET_NAME:
+    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/' if AWS_S3_CUSTOM_DOMAIN else MEDIA_ROOT
+    STORAGES = {
+        'default': {
+            'BACKEND': 'storages.backends.s3.S3Storage',
+        },
+        'staticfiles': {
+            'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
+        },
+    }
+else:
+    MEDIA_URL = '/media/'
+    STORAGES = {
+        'default': {
+            'BACKEND': 'django.core.files.storage.FileSystemStorage',
+        },
+        'staticfiles': {
+            'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
+        },
+    }
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field

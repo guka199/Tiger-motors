@@ -5,6 +5,7 @@ from .models import CarBrand, PartType, Product, ProductImage
 from django.db import transaction
 import re
 import decimal
+import tablib
 
 
 # ============================================================================
@@ -64,6 +65,12 @@ def extract_name_until_georgian_end(description):
 
 class ProductResource(resources.ModelResource):
 
+    # Importing thousands of rows in one call wraps the whole thing in a
+    # single DB transaction, holding one Supabase connection open for the
+    # entire run. Committing in chunks keeps each transaction short and
+    # lets already-imported chunks survive if a later chunk fails.
+    CHUNK_SIZE = 250
+
     class Meta:
         model = Product
         fields = (
@@ -95,6 +102,45 @@ class ProductResource(resources.ModelResource):
             clean_rows.append(row)
         
         dataset.dict = clean_rows
+
+    def import_data(self, dataset, dry_run=False, raise_errors=False,
+                     use_transactions=None, collect_failed_rows=False,
+                     rollback_on_validation_errors=False, **kwargs):
+        # The dry-run preview doesn't persist anything, so there's nothing to
+        # chunk. Only split the real commit into batches.
+        if dry_run or len(dataset) <= self.CHUNK_SIZE:
+            return super().import_data(
+                dataset, dry_run=dry_run, raise_errors=raise_errors,
+                use_transactions=use_transactions,
+                collect_failed_rows=collect_failed_rows,
+                rollback_on_validation_errors=rollback_on_validation_errors,
+                **kwargs,
+            )
+
+        combined = self.get_result_class()()
+        combined.diff_headers = self.get_diff_headers()
+
+        rows = list(dataset)
+        for start in range(0, len(rows), self.CHUNK_SIZE):
+            chunk = tablib.Dataset(
+                *rows[start:start + self.CHUNK_SIZE], headers=dataset.headers
+            )
+            chunk_result = super().import_data(
+                chunk, dry_run=dry_run, raise_errors=raise_errors,
+                use_transactions=use_transactions,
+                collect_failed_rows=collect_failed_rows,
+                rollback_on_validation_errors=rollback_on_validation_errors,
+                **kwargs,
+            )
+            combined.base_errors.extend(chunk_result.base_errors)
+            combined.rows.extend(chunk_result.rows)
+            combined.invalid_rows.extend(chunk_result.invalid_rows)
+            combined.error_rows.extend(chunk_result.error_rows)
+            combined.total_rows += chunk_result.total_rows
+            for key, value in chunk_result.totals.items():
+                combined.totals[key] += value
+
+        return combined
 
     def before_import_row(self, row, **kwargs):
         try:
